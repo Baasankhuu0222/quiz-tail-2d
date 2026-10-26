@@ -9,6 +9,12 @@ const { Server } = require('socket.io');
 const PORT = process.env.PORT || 3000;
 // Админы код. Render дээр ADMIN_CODE орчны хувьсагчаар солих боломжтой.
 const ADMIN_CODE = String(process.env.ADMIN_CODE || '536478');
+// Үзэгчийн код (зөвхөн харах эрхтэй)
+const SPECTATOR_CODE = String(process.env.SPECTATOR_CODE || '000000');
+// Асуулт сонгогдсоны дараах 3-2-1 тоолох хугацаа (мс)
+const COUNTDOWN_MS = 3200;
+// Сүлжээний сааталд зориулсан нэмэлт хугацаа (мс)
+const GRACE_MS = 800;
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'state.json');
 
 const app = express();
@@ -18,7 +24,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 /* ---------------- state ---------------- */
-const defaultSetup = () => ({ questions: [], participants: [], captainNames: [], rounds: 3, answerMode: 'all' });
+const defaultSetup = () => ({ questions: [], participants: [], captainNames: [], rounds: 3, answerMode: 'all', timeLimit: 30 });
 let DB = { setup: defaultSetup(), game: null };
 
 function load() {
@@ -41,6 +47,7 @@ function save() {
   }, 300);
 }
 load();
+if (DB.game) setTimeout(() => scheduleQ(DB.game.phase === 'tiebreak' ? DB.game.tiebreak : DB.game.play.current), 0);
 
 /* ---------------- helpers ---------------- */
 const rid = () => crypto.randomBytes(5).toString('hex');
@@ -62,14 +69,15 @@ function sanitizeSetup(s) {
     questions, participants: participants.slice(0, 500),
     captainNames: participants.filter(p => capSet.has(p)),
     rounds: clamp(parseInt(s.rounds, 10) || 1, 1, 50),
-    answerMode: s.answerMode === 'picker' ? 'picker' : 'all'
+    answerMode: s.answerMode === 'picker' ? 'picker' : 'all',
+    timeLimit: clamp(parseInt(s.timeLimit, 10) || 30, 5, 600)
   };
 }
 
 function newCode(taken) {
   for (;;) {
     const c = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-    if (c !== ADMIN_CODE && !taken.has(c)) { taken.add(c); return c; }
+    if (c !== ADMIN_CODE && c !== SPECTATOR_CODE && !taken.has(c)) { taken.add(c); return c; }
   }
 }
 
@@ -104,16 +112,28 @@ function endGame(g) {
   g.phase = tieGroups(g).length ? 'tiebreak' : 'finished';
 }
 
+let qTimers = [];
+function scheduleQ(cur) {
+  qTimers.forEach(clearTimeout); qTimers = [];
+  if (!cur) return;
+  const now = Date.now();
+  [cur.startAt, cur.endAt].forEach(t => { if (t && t > now) qTimers.push(setTimeout(broadcast, t - now + 20)); });
+}
+function timing(g) {
+  const start = Date.now() + COUNTDOWN_MS;
+  return { startAt: start, endAt: start + (g.timeLimit || 30) * 1000 };
+}
+
 function logoutCaptains(msg) {
   for (const s of io.sockets.sockets.values()) {
-    if (s.data.role && s.data.role !== 'admin') { s.data.role = null; s.emit('loggedout', msg); }
+    if (s.data.role && s.data.role !== 'admin' && s.data.role !== 'spectator') { s.data.role = null; s.emit('loggedout', msg); }
   }
 }
 
 /* ---------------- views ---------------- */
 function viewFor(role) {
   const isAdmin = role === 'admin';
-  const v = { role, setup: isAdmin ? DB.setup : null, game: null };
+  const v = { role, setup: isAdmin ? DB.setup : null, game: null, serverNow: Date.now() };
   const g = DB.game;
   if (!g) return v;
   const captains = {};
@@ -126,6 +146,7 @@ function viewFor(role) {
     if (!cur) return null;
     const o = Object.assign({}, cur);
     if (!isAdmin && cur.status !== 'done') o.answer = null;
+    if (!isAdmin && cur.startAt && Date.now() < cur.startAt) o.text = null;
     return o;
   };
   const answers = {};
@@ -139,7 +160,7 @@ function viewFor(role) {
     answers[cur.key] = out;
   });
   v.game = {
-    id: g.id, phase: g.phase, rounds: g.rounds, answerMode: g.answerMode, topics: g.topics,
+    id: g.id, phase: g.phase, rounds: g.rounds, answerMode: g.answerMode, timeLimit: g.timeLimit || 30, topics: g.topics,
     qmeta: g.bank.map(q => ({ id: q.id, topic: q.topicId, points: q.points })),
     participants: g.participants, captainIds: g.captainIds, captains, order: g.order,
     draft: { picks: g.draft.picks },
@@ -157,11 +178,13 @@ function changed() { save(); broadcast(); }
 
 /* ---------------- actions ---------------- */
 const ADMIN_ONLY = new Set(['setup.update', 'game.start', 'game.shuffle', 'game.startdraft', 'game.undopick', 'game.startplay',
-  'play.award', 'play.cancel', 'play.next', 'game.end', 'tb.start', 'tb.judge', 'tb.finish', 'game.reset', 'captain.newcode']);
+  'play.award', 'play.cancel', 'play.next', 'game.end', 'tb.start', 'tb.judge', 'tb.finish', 'game.reset', 'captain.newcode',
+  'timer.add', 'timer.stop']);
 
 function handle(socket, m) {
   const role = socket.data.role;
   if (!role) return { error: 'Нэвтэрнэ үү.' };
+  if (role === 'spectator') return { error: 'Үзэгч зөвхөн харна.' };
   const isAdmin = role === 'admin';
   if (ADMIN_ONLY.has(m.type) && !isAdmin) return { error: 'Зөвхөн админ хийнэ.' };
   const g = DB.game;
@@ -184,7 +207,7 @@ function handle(socket, m) {
       s.captainNames.forEach((n, i) => { const id = 'c' + i; captainIds.push(id); captains[id] = { name: n, code: newCode(taken), registered: false }; });
       logoutCaptains('Шинэ тоглоом эхэллээ. Шинэ кодоороо нэвтэрнэ үү.');
       DB.game = {
-        id: rid(), phase: 'register', rounds: s.rounds, answerMode: s.answerMode, topics,
+        id: rid(), phase: 'register', rounds: s.rounds, answerMode: s.answerMode, timeLimit: s.timeLimit || 30, topics,
         bank: s.questions.map(q => ({ id: q.id, topicId: tid[q.topic], points: q.points, q: q.q, a: q.a })),
         participants: s.participants.slice(), captainIds, captains, order: [], draft: { picks: [] },
         play: { round: 1, turn: 0, current: null }, used: {}, scores: {}, log: [], tb: {}, tbCount: 0, tiebreak: null, answers: {}
@@ -235,12 +258,16 @@ function handle(socket, m) {
       if (actor !== 'admin' && actor !== picker) return { error: 'Таны ээлж биш.' };
       const q = g.bank.find(x => x.id === m.qid);
       if (!q || g.used[q.id]) return { error: 'Энэ асуулт ашиглагдсан.' };
-      g.play.current = { key: 'q_' + q.id, qid: q.id, topic: q.topicId, points: q.points, text: q.q, capId: picker, status: 'open', answer: q.a, results: null };
+      g.play.current = Object.assign({ key: 'q_' + q.id, qid: q.id, topic: q.topicId, points: q.points, text: q.q, capId: picker, status: 'open', answer: q.a, results: null }, timing(g));
+      scheduleQ(g.play.current);
       return;
     }
     case 'play.answer': {
       const cur = m.key && m.key.startsWith('tb') ? g.tiebreak : g.play.current;
       if (!cur || cur.key !== m.key || cur.status !== 'open') return { error: 'Хариулт хүлээн авахгүй байна.' };
+      const now = Date.now();
+      if (cur.startAt && now < cur.startAt) return { error: 'Хугацаа хараахан эхлээгүй.' };
+      if (cur.endAt && now > cur.endAt + GRACE_MS) return { error: 'Хугацаа дууссан.', code: 'time_over' };
       if (actor === 'admin') return { error: 'Ахлагчийг сонгоно уу.' };
       const elig = cur.group ? cur.group : eligible(g, cur.capId);
       if (!elig.includes(actor)) return { error: 'Энэ асуултад таны баг хариулахгүй.' };
@@ -277,12 +304,13 @@ function handle(socket, m) {
         const q = un[crypto.randomInt(un.length)];
         g.used[q.id] = true;
         const t = g.topics.find(x => x.id === q.topicId);
-        g.tiebreak = { key, group, qid: q.id, topicName: t ? t.name : '', text: q.q, status: 'open', answer: q.a, results: null };
+        g.tiebreak = Object.assign({ key, group, qid: q.id, topicName: t ? t.name : '', text: q.q, status: 'open', answer: q.a, results: null }, timing(g));
       } else {
         const q = str(m.q, 2000), a = str(m.a, 1000);
         if (!q || !a) return { error: 'Асуулт, хариултаа бичнэ үү.' };
-        g.tiebreak = { key, group, qid: null, topicName: '', text: q, status: 'open', answer: a, results: null };
+        g.tiebreak = Object.assign({ key, group, qid: null, topicName: '', text: q, status: 'open', answer: a, results: null }, timing(g));
       }
+      scheduleQ(g.tiebreak);
       return;
     }
     case 'tb.judge': {
@@ -292,6 +320,20 @@ function handle(socket, m) {
       const results = {};
       tb.group.forEach(id => { results[id] = Number(grades[id]) ? 1 : 0; g.tb[id] = (g.tb[id] || []).concat([results[id]]); });
       tb.status = 'done'; tb.results = results; return;
+    }
+    case 'timer.add': {
+      const cur = g.phase === 'tiebreak' ? g.tiebreak : g.play.current;
+      if (!cur || cur.status !== 'open') return { error: 'Идэвхтэй асуулт алга.' };
+      const sec = clamp(parseInt(m.sec, 10) || 10, 1, 600), now = Date.now();
+      cur.endAt = Math.max(cur.endAt, now) + sec * 1000;
+      scheduleQ(cur); return;
+    }
+    case 'timer.stop': {
+      const cur = g.phase === 'tiebreak' ? g.tiebreak : g.play.current;
+      if (!cur || cur.status !== 'open') return { error: 'Идэвхтэй асуулт алга.' };
+      const now = Date.now();
+      if (cur.startAt > now) cur.startAt = now;
+      cur.endAt = now; scheduleQ(cur); return;
     }
     case 'tb.finish': {
       if (g.phase !== 'tiebreak' || tieGroups(g).length) return { error: 'Тэнцээ шийдэгдээгүй байна.' };
@@ -318,6 +360,7 @@ io.on('connection', socket => {
     code = String(code || '').trim();
     let role = null;
     if (code && code === ADMIN_CODE) role = 'admin';
+    else if (code && code === SPECTATOR_CODE) role = 'spectator';
     else if (code && DB.game) role = DB.game.captainIds.find(id => DB.game.captains[id].code === code) || null;
     if (!role) {
       f.n++; if (f.n >= 8) { f.until = now + 60000; f.n = 0; }
@@ -326,7 +369,7 @@ io.on('connection', socket => {
     }
     fails.delete(ip);
     socket.data.role = role;
-    if (role !== 'admin' && !DB.game.captains[role].registered) { DB.game.captains[role].registered = true; changed(); }
+    if (role !== 'admin' && role !== 'spectator' && !DB.game.captains[role].registered) { DB.game.captains[role].registered = true; changed(); }
     ack({ ok: true, role });
     socket.emit('state', viewFor(role));
   });
@@ -337,7 +380,7 @@ io.on('connection', socket => {
     ack = typeof ack === 'function' ? ack : () => {};
     try {
       const r = handle(socket, m || {});
-      if (r && r.error) return ack({ ok: false, error: r.error });
+      if (r && r.error) return ack({ ok: false, error: r.error, code: r.code });
       ack({ ok: true });
       changed();
     } catch (e) {

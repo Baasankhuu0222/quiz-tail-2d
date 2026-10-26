@@ -9,3 +9,5 @@ services:
     envVars:
       - key: ADMIN_CODE
         sync: false
+      - key: SPECTATOR_CODE
+        sync: false
