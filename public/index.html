@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Багийн квиз</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF2EF; --surface:#FFFFFF; --surface-2:#F4F8F6; --ink:#12302C; --muted:#56706B; --line:#D2DFDA;
+  --board:#14504B; --board-2:#0F423E; --board-ink:#E9F4F1; --board-muted:#A9C9C3; --tile:#1E6A63;
+  --gold:#F0B11A; --gold-ink:#2B1F00; --ok:#1C7F46; --bad:#B8361E; --focus:#F0B11A;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1C1A; --surface:#142B28; --surface-2:#18332F; --ink:#E6F0ED; --muted:#93AAA5; --line:#28473F;
+    --board:#0F3E3A; --board-2:#0B302D; --board-ink:#E6F2EF; --board-muted:#8FB3AC; --tile:#195A54;
+    --gold:#F4BC34; --gold-ink:#241A00; --ok:#4CC27F; --bad:#F07A61; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1C1A; --surface:#142B28; --surface-2:#18332F; --ink:#E6F0ED; --muted:#93AAA5; --line:#28473F;
+  --board:#0F3E3A; --board-2:#0B302D; --board-ink:#E6F2EF; --board-muted:#8FB3AC; --tile:#195A54;
+  --gold:#F4BC34; --gold-ink:#241A00; --ok:#4CC27F; --bad:#F07A61; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--board)}
+h1,h2,h3,.disp{font-family:"Unbounded","Golos Text",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;margin:0}
+h2{font-size:20px;line-height:1.25}
+h3{font-size:15px;font-weight:500}
+p{margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--board);color:var(--board-ink)}
+.top-in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:17px}
+.mark{width:28px;height:28px;border-radius:7px;background:var(--gold);color:var(--gold-ink);display:grid;place-items:center;font-size:16px}
+.phase{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--board-2);color:var(--board-muted)}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:14px}
+.top select{background:var(--board-2);color:var(--board-ink);border:1px solid #ffffff22;border-radius:8px;padding:6px 8px;max-width:220px}
+.top .linkbtn{background:none;border:1px solid #ffffff33;color:var(--board-ink);border-radius:8px;padding:5px 10px;cursor:pointer}
+
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+.stack{display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card > h2{margin-bottom:6px}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spacer{flex:1}
+
+.btn{border:0;border-radius:9px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--gold);color:var(--gold-ink);line-height:1.2}
+.btn:hover{filter:brightness(1.05)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+.btn.sec{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.btn.big{padding:14px 22px;font-size:17px}
+.icon-btn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;padding:4px 8px;border-radius:6px}
+.icon-btn:hover{background:var(--surface-2);color:var(--bad)}
+
+label.f{display:grid;gap:4px;font-size:13.5px;color:var(--muted)}
+input[type=text],input[type=number],input[type=password],textarea,select{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;color:var(--ink)}
+textarea{resize:vertical;min-height:80px}
+
+/* setup */
+.steps{display:grid;gap:18px}
+.step-h{display:flex;gap:12px;align-items:baseline;margin-bottom:12px}
+.num{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;color:var(--gold-ink);background:var(--gold);width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;flex:none;font-size:14px}
+.qform{display:grid;grid-template-columns:1.2fr .6fr;gap:10px}
+.qform .wide{grid-column:1/-1}
+.qgroup{margin-top:16px}
+.qgroup h3{margin-bottom:6px}
+.qrow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.pts{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:13px;background:var(--board);color:var(--gold);border-radius:6px;padding:3px 8px;flex:none;min-width:48px;text-align:center}
+.qtext{flex:1;min-width:0;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:var(--muted);margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 13px;cursor:pointer;font-size:15px}
+.chip.on{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.chip.on::before{content:"★ ";color:var(--gold)}
+.issues{display:grid;gap:4px;font-size:14px}
+.issues .bad{color:var(--bad)}
+.issues .warn{color:var(--muted)}
+.radio{display:flex;gap:8px;align-items:center;cursor:pointer}
+
+/* board */
+.board-wrap{background:var(--board);border-radius:16px;padding:14px;overflow-x:auto}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(130px,1fr);gap:10px}
+.col{display:grid;gap:8px;align-content:start}
+.topic{color:var(--board-ink);font-family:"Unbounded",system-ui,sans-serif;font-weight:500;font-size:13.5px;text-align:center;padding:8px 4px 10px;min-height:52px;display:grid;place-items:center;border-bottom:2px solid #ffffff1f;overflow-wrap:anywhere}
+.tile{height:62px;border:0;border-radius:8px;background:var(--tile);color:var(--gold);font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:clamp(18px,2.2vw,24px);cursor:default}
+.tile.can{cursor:pointer;box-shadow:inset 0 0 0 2px #F0B11A55}
+.tile.can:hover{background:var(--gold);color:var(--gold-ink)}
+.tile.used{opacity:.22}
+.tile.sel{background:var(--gold);color:var(--gold-ink)}
+.board-note{color:var(--board-muted);font-size:13.5px;margin-top:10px}
+
+/* layout */
+.play{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}
+@media (max-width:900px){.play{grid-template-columns:minmax(0,1fr)}.qform{grid-template-columns:1fr}}
+
+.turn{display:flex;gap:14px;align-items:center;padding:14px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c,var(--gold))}
+.turn .who{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:18px}
+.roundinfo{font-family:"Unbounded",system-ui,sans-serif;font-size:13px;color:var(--muted);white-space:nowrap}
+
+.dot{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none;display:inline-block}
+.score-list{display:grid;gap:2px}
+.srow{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.place{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;color:var(--muted);font-size:14px;text-align:center}
+.sname{font-weight:600;display:flex;gap:8px;align-items:center}
+.members{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.sval{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:22px}
+
+/* question card */
+.qcard{background:var(--board);color:var(--board-ink);border-radius:16px;padding:22px;display:grid;gap:16px}
+.qmeta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--board-muted);font-size:14px}
+.qmeta .pts{background:var(--gold);color:var(--gold-ink)}
+.qbody{font-size:clamp(20px,2.6vw,28px);font-weight:500;line-height:1.35;overflow-wrap:anywhere}
+.reveal{background:var(--board-2);border-radius:10px;padding:12px 14px}
+.reveal .lbl{font-size:13px;color:var(--board-muted)}
+.reveal .val{font-size:18px;font-weight:600;color:var(--gold)}
+.qcard textarea,.qcard input{background:var(--board-2);border-color:#ffffff26;color:var(--board-ink)}
+.qcard .btn.sec{background:var(--board-2);color:var(--board-ink);border-color:#ffffff26}
+.qcard .muted{color:var(--board-muted)}
+.alist{display:grid;gap:8px}
+.arow{background:var(--board-2);border-radius:10px;padding:12px 14px;display:grid;gap:8px;border-left:5px solid var(--c)}
+.arow .t{font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.arow .ans{font-size:17px;overflow-wrap:anywhere}
+.grade{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.gbtn{border:1px solid #ffffff33;background:transparent;color:var(--board-ink);border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600}
+.gbtn.on.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.gbtn.on.no{background:var(--bad);border-color:var(--bad);color:#fff}
+.gbtn.on.cu{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.grade input{width:90px;padding:6px 8px}
+.awarded{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;color:var(--gold)}
+.sent{color:var(--board-muted);font-size:14px}
+
+/* draft */
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.team{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;border-top:6px solid var(--c)}
+.team.active{box-shadow:0 0 0 3px var(--gold)}
+.team h3{display:flex;gap:8px;align-items:center;font-size:15px;margin-bottom:8px}
+.team ul{margin:0;padding-left:18px;color:var(--ink)}
+.team .cap{color:var(--muted);font-size:13px;margin-bottom:4px}
+.pool .chip{font-size:16px}
+.pool .chip.pick{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.pool .chip.pick:hover{filter:brightness(1.06)}
+.pool .chip.idle{cursor:default}
+
+/* order */
+.order-list{display:grid;gap:10px;counter-reset:o}
+.oitem{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:14px 16px}
+.oitem .n{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:26px;color:var(--c);width:36px}
+.oitem .nm{font-weight:600;font-size:18px}
+.anim .oitem{animation:rise .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * .45s)}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.anim .oitem{animation:none}}
+
+/* final */
+.podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.pod{border-radius:14px;padding:18px;background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--c)}
+.pod.first{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.pod .pl{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:34px;line-height:1}
+.pod .nm{font-weight:600;font-size:18px;margin-top:8px}
+.pod .sc{font-family:"Unbounded",system-ui,sans-serif;font-size:15px;margin-top:4px;opacity:.85}
+.pod.first .members{color:var(--board-muted)}
+
+.status-list{display:grid;gap:6px}
+.status-list div{display:flex;gap:10px;align-items:center}
+.okmark{color:var(--ok);font-weight:700}
+.waitmark{color:var(--muted)}
+.center{text-align:center}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:10px;font-size:15px;z-index:50;max-width:90vw;box-shadow:0 6px 24px #0004}
+.foot{margin-top:28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13.5px}
+.login{min-height:70vh;display:grid;place-items:center}
+.login .card{width:min(420px,100%);text-align:center;display:grid;gap:14px}
+.codein{font-family:"Unbounded",system-ui,sans-serif;font-size:28px;letter-spacing:.3em;text-align:center}
+.codes{display:grid;gap:8px}
+.codes .crow{display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface-2);border-radius:10px}
+.codes .code{font-family:"Unbounded",system-ui,sans-serif;font-weight:700;font-size:20px;letter-spacing:.12em;margin-left:auto}
+.offline{background:var(--bad);color:#fff;text-align:center;padding:6px;font-size:14px}
+.tbgroup{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-weight:600}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast" hidden></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function(){
+'use strict';
+const LS={
+  get(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+const TEAM_COLORS=['#E4572E','#3A86FF','#6FA51A','#B5179E','#D99400','#00A3A3','#8E6CCF','#E8559F','#5C80BC','#C4384E'];
+const PHASES={setup:'Бэлтгэл',register:'Бүртгэл',order:'Дараалал',draft:'Драфт',play:'Тоглолт',tiebreak:'Тэнцээ шийдвэрлэх',finished:'Эцсийн дүн'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+const socket=io();
+const S={connected:false,auth:null,authTried:false,viewAs:'admin',view:null,setup:null,setupPending:0,form:{},grade:{},animOrder:null};
+
+let toastTimer=null;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true},3600)}
+function send(type,data){
+  return new Promise(res=>{
+    if(!S.connected){toast('Сервертэй холбогдоогүй байна.');return res(false)}
+    socket.emit('act',Object.assign({type},data||{}),r=>{if(!r||!r.ok)toast((r&&r.error)||'Алдаа гарлаа.');res(!!(r&&r.ok))});
+  });
+}
+function auth(code,silent){
+  socket.emit('auth',code,r=>{
+    S.authTried=true;
+    if(r&&r.ok){S.auth=r.role;S.viewAs='admin';LS.set('tq-code',code);S.form.code=''}
+    else{S.auth=null;S.form.code='';LS.del('tq-code');if(!silent)toast((r&&r.error)||'Код буруу байна.')}
+    render();
+  });
+}
+socket.on('connect',()=>{S.connected=true;const c=LS.get('tq-code');if(c)auth(c,true);else{S.authTried=true;render()}});
+socket.on('disconnect',()=>{S.connected=false;render()});
+socket.on('state',v=>{S.view=v;if(v.setup&&!S.setupPending)S.setup=v.setup;render()});
+socket.on('loggedout',msg=>{S.auth=null;S.view=null;LS.del('tq-code');toast(msg||'Гарлаа.');render()});
+
+let setupTimer=null;
+let setupSeq=0;
+function pushSetup(){
+  const my=++setupSeq;S.setupPending=1;clearTimeout(setupTimer);
+  setupTimer=setTimeout(async()=>{await send('setup.update',{setup:S.setup});if(my===setupSeq)S.setupPending=0},400);
+}
+
+/* ---------- derived ---------- */
+const G=()=>S.view&&S.view.game;
+const capName=(st,id)=>(st.captains[id]&&st.captains[id].name)||'?';
+const teamColor=(st,id)=>TEAM_COLORS[Math.max(0,st.captainIds.indexOf(id))%TEAM_COLORS.length];
+const teamIds=st=>st.order&&st.order.length?st.order:st.captainIds;
+function draftInfo(st){
+  const order=teamIds(st),n=order.length,picks=st.draft.picks||[];
+  const caps=new Set(st.captainIds.map(id=>st.captains[id].name));
+  const picked=new Set(picks.map(p=>p.name));
+  const pool=st.participants.filter(p=>!caps.has(p)&&!picked.has(p));
+  const k=picks.length,r=Math.floor(k/n),pos=k%n,idx=r%2===0?pos:n-1-pos;
+  const teams={};order.forEach(id=>teams[id]=[]);
+  picks.forEach(p=>{(teams[p.capId]||(teams[p.capId]=[])).push(p.name)});
+  return {pool,picker:pool.length?order[idx]:null,teams,k,r,total:k+pool.length,dir:r%2===0?1:-1};
+}
+function cmpTb(a,b){const L=Math.max(a.length,b.length);for(let i=0;i<L;i++){const x=a[i]==null?-1:a[i],y=b[i]==null?-1:b[i];if(x!==y)return x-y}return 0}
+function rankInfo(st){
+  const arr=teamIds(st).map(id=>({id,score:(st.scores||{})[id]||0,tb:((st.tb||{})[id])||[]}));
+  arr.sort((a,b)=>(b.score-a.score)||cmpTb(b.tb,a.tb));
+  const groups=[];
+  for(let i=0;i<arr.length;){let j=i+1;
+    while(j<arr.length&&arr[j].score===arr[i].score&&cmpTb(arr[j].tb,arr[i].tb)===0)j++;
+    for(let k=i;k<j;k++)arr[k].place=i+1;
+    if(j-i>1)groups.push(arr.slice(i,j).map(x=>x.id));
+    i=j}
+  return {list:arr,groups};
+}
+const eligible=(st,capId)=>st.answerMode==='picker'?[capId]:teamIds(st).slice();
+const ansOf=(st,key,capId)=>{const a=st.answers&&st.answers[key];return a&&a[capId]!=null?a[capId]:null};
+const topicName=(st,tid)=>{const t=st.topics.find(x=>x.id===tid);return t?t.name:''};
+const remainingQ=st=>st.qmeta.filter(q=>!(st.used||{})[q.id]);
+
+function currentRole(){
+  const st=G();
+  if(S.auth==='admin'){
+    if(S.viewAs==='admin'||S.viewAs==='spectator')return S.viewAs;
+    if(st&&st.captains[S.viewAs])return S.viewAs;
+    return 'admin';
+  }
+  return S.auth;
+}
+
+/* ---------- render ---------- */
+function captureFocus(){const el=document.activeElement;if(el&&el.id){let s=null,e=null;try{s=el.selectionStart;e=el.selectionEnd}catch(x){}return {id:el.id,s,e}}return null}
+function restoreFocus(f){if(!f)return;const el=document.getElementById(f.id);if(!el)return;el.focus({preventScroll:true});try{if(f.s!=null)el.setSelectionRange(f.s,f.e)}catch(x){}}
+const fv=(k,d)=>esc(S.form[k]!=null?S.form[k]:(d==null?'':d));
+
+function render(){
+  const f=captureFocus();
+  document.getElementById('root').innerHTML=renderTop()+(S.connected?'':'<div class="offline">Сервертэй холболт тасарсан. Дахин холбогдож байна…</div>')+'<main class="wrap">'+renderMain()+'</main>';
+  restoreFocus(f);
+}
+function renderTop(){
+  const st=G(),role=currentRole();
+  let phase='';
+  if(S.auth){
+    if(st){phase=PHASES[st.phase]||'';if(st.phase==='play')phase+=': '+st.play.round+'/'+st.rounds+' үе'}
+    else phase=PHASES.setup;
+  }
+  let right='';
+  if(S.auth==='admin'){
+    if(st)right+=`<label class="small" for="role-sel" style="color:var(--board-muted)">Харагдац</label>
+    <select id="role-sel">
+      <option value="admin" ${role==='admin'?'selected':''}>Админ</option>
+      ${st.captainIds.map(id=>`<option value="${id}" ${role===id?'selected':''}>Ахлагч: ${esc(capName(st,id))}</option>`).join('')}
+      <option value="spectator" ${role==='spectator'?'selected':''}>Үзэгч / дэлгэц</option>
+    </select>`;
+    right+=`<button class="linkbtn" data-act="logout">Гарах</button>`;
+  }else if(S.auth&&st){
+    right=`<span><span class="dot" style="--c:${teamColor(st,S.auth)}"></span> ${esc(capName(st,S.auth))}</span><button class="linkbtn" data-act="logout">Гарах</button>`;
+  }
+  return `<header class="top"><div class="top-in"><div class="brand"><span class="mark">?</span>Багийн квиз</div>${phase?`<span class="phase">${esc(phase)}</span>`:''}<div class="top-right">${right}</div></div></header>`;
+}
+function renderLogin(){
+  if(!S.authTried)return `<div class="empty">Холбогдож байна…</div>`;
+  return `<div class="login"><div class="card"><h1 style="font-size:22px">Нууц код</h1><p class="muted small">Админ эсвэл багийн ахлагчийн кодоо оруулна уу.</p>
+  <input type="password" id="f-code" class="codein" data-bind="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" value="${fv('code')}" autofocus>
+  <button class="btn big" data-act="login">Нэвтрэх</button></div></div>`;
+}
+function renderMain(){
+  if(!S.auth)return renderLogin();
+  if(!S.view)return `<div class="empty">Ачаалж байна…</div>`;
+  const st=G(),role=currentRole();
+  if(role==='admin'){
+    if(!st)return renderSetup();
+    return renderAdmin(st);
+  }
+  if(!st)return `<div class="card empty"><h2>Тоглоом эхлээгүй байна</h2></div>`;
+  if(role==='spectator')return phaseView(st,'spectator');
+  return renderCaptain(st,role);
+}
+
+/* ---------- setup ---------- */
+function renderSetup(){
+  const b=S.setup;if(!b)return `<div class="empty">Ачаалж байна…</div>`;
+  const topics=[...new Set(b.questions.map(q=>q.topic))];
+  const caps=new Set(b.captainNames);
+  const needed=b.rounds*b.captainNames.length;
+  const issues=[];
+  if(!b.questions.length)issues.push('Асуулт оруулаагүй байна.');
+  if(b.participants.length<2)issues.push('Дор хаяж 2 оролцогч хэрэгтэй.');
+  if(b.captainNames.length<2)issues.push('Дор хаяж 2 багийн ахлагч сонгоно уу.');
+  if(b.captainNames.length>=2&&b.captainNames.length===b.participants.length)issues.push('Бүх оролцогч ахлагч байна. Драфтад сонгох гишүүн үлдэхгүй.');
+  const warn=(b.captainNames.length>=2&&b.questions.length&&b.questions.length<needed)?`Асуулт хүрэлцэхгүй: ${b.rounds} үе × ${b.captainNames.length} баг = ${needed} асуулт хэрэгтэй, одоо ${b.questions.length} байна. Асуулт дуусахад тоглоом эрт дуусна.`:'';
+  const qlist=topics.map(t=>`<div class="qgroup"><h3>${esc(t)}</h3>${b.questions.filter(q=>q.topic===t).sort((x,y)=>x.points-y.points).map(q=>`
+    <div class="qrow"><span class="pts">${q.points}</span><div class="qtext"><div>${esc(q.q)}</div><div class="muted small">Хариулт: ${esc(q.a)}</div></div><button class="icon-btn" data-act="delq" data-id="${q.id}" aria-label="Асуулт устгах">✕</button></div>`).join('')}</div>`).join('');
+  return `<div class="steps">
+  <div><h1 style="font-size:24px">Тоглоомын бэлтгэл</h1><p class="muted" style="margin-top:4px">Дөрвөн алхмыг бөглөөд бүртгэлээ нээнэ. Өөрчлөлт сервер дээр автоматаар хадгалагдана.</p></div>
+
+  <section class="card">
+    <div class="step-h"><span class="num">1</span><div><h2>Асуултууд</h2><p class="muted small">Сэдэв, оноо, асуулт, хариулт. Одоогоор ${b.questions.length} асуулт, ${topics.length} сэдэв.</p></div></div>
+    <datalist id="topic-list">${topics.map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
+    <div class="qform">
+      <label class="f">Сэдэв<input type="text" id="f-topic" data-bind="topic" list="topic-list" value="${fv('topic')}" placeholder="Жишээ нь: Түүх"></label>
+      <label class="f">Оноо<input type="number" id="f-points" data-bind="points" min="1" step="1" value="${fv('points','100')}"></label>
+      <label class="f wide">Асуулт<textarea id="f-q" data-bind="q" rows="2">${fv('q')}</textarea></label>
+      <label class="f wide">Зөв хариулт<input type="text" id="f-a" data-bind="a" value="${fv('a')}"></label>
+      <div class="wide row"><button class="btn" data-act="addq">Асуулт нэмэх</button><button class="btn ghost" data-act="sample">Жишээ асуултаар дүүргэх</button>${b.questions.length?`<span class="spacer"></span><button class="btn danger" data-act="clearq">Бүгдийг устгах</button>`:''}</div>
+    </div>
+    <details ${S.form.bulkOpen?'open':''}><summary>Олноор нь хуулж оруулах, хуулбар авах</summary>
+      <p class="muted small" style="margin:8px 0">Мөр бүрт нэг асуулт: <b>Сэдэв | Оноо | Асуулт | Хариулт</b>. Excel-ээс хуулсан табаар тусгаарласан мөр ч болно.</p>
+      <textarea id="f-bulk" data-bind="bulk" rows="5" placeholder="Түүх | 100 | Их Монгол Улс хэдэн онд байгуулагдсан бэ? | 1206">${fv('bulk')}</textarea>
+      <div class="row" style="margin-top:8px"><button class="btn sec" data-act="bulk">Оруулах</button>${b.questions.length?'<button class="btn ghost" data-act="exportq">Одоогийн асуултуудыг энд гаргах</button>':''}</div>
+    </details>
+    ${qlist}
+  </section>
+
+  <section class="card">
+    <div class="step-h"><span class="num">2</span><div><h2>Оролцогчид</h2><p class="muted small">Мөр бүрт нэг нэр. Ахлагч нар ч энд багтана. Одоогоор ${b.participants.length} хүн.</p></div></div>
+    <textarea id="f-people" data-bind="people" rows="6" placeholder="Бат&#10;Сараа&#10;Тэмүүлэн">${fv('people',b.participants.join('\n'))}</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn sec" data-act="savepeople">Нэрсийг хадгалах</button></div>
+  </section>
+
+  <section class="card">
+    <div class="step-h"><span class="num">3</span><div><h2>Үеийн тоо</h2><p class="muted small">Нэг үед баг бүр нэг удаа асуулт сонгоно.</p></div></div>
+    <div class="row" style="align-items:flex-end;gap:24px">
+      <label class="f" style="max-width:140px">Үе<input type="number" id="f-rounds" min="1" max="50" value="${b.rounds}"></label>
+      <div style="display:grid;gap:6px">
+        <span class="muted small">Сонгосон асуултад хэн хариулах вэ?</span>
+        <label class="radio"><input type="radio" name="amode" value="all" ${b.answerMode!=='picker'?'checked':''}> Бүх баг хариулна</label>
+        <label class="radio"><input type="radio" name="amode" value="picker" ${b.answerMode==='picker'?'checked':''}> Зөвхөн сонгосон баг хариулна</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step-h"><span class="num">4</span><div><h2>Багийн ахлагч нар</h2><p class="muted small">Нэр дээр дарж ахлагчаар тэмдэглэнэ. Сонгосон: ${b.captainNames.length}.</p></div></div>
+    ${b.participants.length?`<div class="chips">${b.participants.map(p=>`<button class="chip ${caps.has(p)?'on':''}" data-act="togglecap" data-name="${esc(p)}" aria-pressed="${caps.has(p)}">${esc(p)}</button>`).join('')}</div>
+    <div class="row" style="margin-top:12px"><input type="number" id="f-capcount" data-bind="capcount" min="2" style="width:90px" value="${fv('capcount','4')}"><button class="btn ghost" data-act="randcap">Санамсаргүй сонгох</button></div>`:`<p class="muted">Эхлээд оролцогчдын нэрсийг оруулна уу.</p>`}
+  </section>
+
+  <section class="card">
+    <div class="issues">${issues.map(i=>`<div class="bad">${esc(i)}</div>`).join('')}${warn?`<div class="warn">${esc(warn)}</div>`:''}</div>
+    <div class="row" style="margin-top:${issues.length||warn?'12px':'0'}"><button class="btn big" data-act="startreg" ${issues.length?'disabled':''}>Бүртгэл нээх</button>
+    <span class="muted small">Ахлагч бүрд санамсаргүй 6 оронтой код үүснэ.</span></div>
+  </section>
+  </div>`;
+}
+
+/* ---------- shared pieces ---------- */
+function renderBoard(st,opts){
+  opts=opts||{};
+  const cur=st.play&&st.play.current;
+  const cols=st.topics.map(t=>{
+    const qs=st.qmeta.filter(q=>q.topic===t.id).sort((a,b)=>a.points-b.points);
+    return `<div class="col"><div class="topic">${esc(t.name)}</div>${qs.map(q=>{
+      const used=(st.used||{})[q.id],sel=cur&&cur.qid===q.id,can=opts.clickable&&!used&&!cur;
+      return `<button class="tile ${used&&!sel?'used':''} ${sel?'sel':''} ${can?'can':''}" ${can?`data-act="pickq" data-q="${q.id}"`:'tabindex="-1"'} aria-label="${esc(t.name)}, ${q.points} оноо${used?', ашигласан':''}">${q.points}</button>`}).join('')}</div>`}).join('');
+  return `<div class="board-wrap"><div class="board">${cols}</div>${opts.note?`<p class="board-note">${opts.note}</p>`:''}</div>`;
+}
+function topicSummary(st){
+  return `<div class="card"><h2>Сэдвүүд</h2><div style="display:grid;gap:8px;margin-top:10px">${st.topics.map(t=>{
+    const qs=st.qmeta.filter(q=>q.topic===t.id);const by={};qs.forEach(q=>by[q.points]=(by[q.points]||0)+1);
+    return `<div class="row"><b style="min-width:140px">${esc(t.name)}</b><span class="muted small">${Object.keys(by).sort((a,b)=>a-b).map(p=>`${p} оноо × ${by[p]}`).join(', ')}</span></div>`}).join('')}</div>
+    <p class="muted small" style="margin-top:12px">Нийт ${st.qmeta.length} асуулт, ${st.rounds} үе.</p></div>`;
+}
+function renderScoreboard(st){
+  const r=rankInfo(st),teams=draftInfo(st).teams;
+  return `<div class="card"><h2 style="margin-bottom:6px">Онооны самбар</h2><div class="score-list">${r.list.map(x=>`
+    <div class="srow"><span class="place">${x.place}</span><div><div class="sname"><span class="dot" style="--c:${teamColor(st,x.id)}"></span>${esc(capName(st,x.id))}-ийн баг</div>${(teams[x.id]||[]).length?`<div class="members">${teams[x.id].map(esc).join(', ')}</div>`:''}</div><span class="sval">${x.score}</span></div>`).join('')}</div></div>`;
+}
+function renderOrder(st){
+  const anim=S.animOrder!==st.id+st.order.join();S.animOrder=st.id+st.order.join();
+  return `<div class="card"><h2>Ахлагч нарын дараалал</h2><p class="muted small" style="margin:4px 0 14px">Санамсаргүйгээр сугалсан. Драфт болон асуулт сонголт энэ дарааллаар явна.</p>
+  <div class="order-list ${anim?'anim':''}">${st.order.map((id,i)=>`<div class="oitem" style="--c:${teamColor(st,id)};--i:${i}"><span class="n">${i+1}</span><span class="nm">${esc(capName(st,id))}</span></div>`).join('')}</div></div>`;
+}
+function regStatus(st){
+  return `<div class="status-list">${st.captainIds.map(id=>{const c=st.captains[id];return `<div><span class="dot" style="--c:${teamColor(st,id)}"></span><span>${esc(c.name)}</span>${c.registered?'<span class="okmark">✓ нэвтэрсэн</span>':'<span class="waitmark">хүлээгдэж байна</span>'}</div>`}).join('')}</div>`;
+}
+function codeList(st){
+  return `<div class="codes">${st.captainIds.map(id=>{const c=st.captains[id];return `<div class="crow"><span class="dot" style="--c:${teamColor(st,id)}"></span><b>${esc(c.name)}</b>${c.registered?'<span class="okmark small">✓ нэвтэрсэн</span>':'<span class="waitmark small">хүлээгдэж байна</span>'}<span class="code">${esc(c.code||'')}</span><button class="icon-btn" data-act="newcode" data-cap="${id}" title="Шинэ код үүсгэх" aria-label="${esc(c.name)}-ийн кодыг шинэчлэх">↻</button></div>`}).join('')}</div>`;
+}
+
+function renderDraft(st,role){
+  const d=draftInfo(st),canPick=d.picker&&(role==='admin'||role===d.picker);
+  const head=d.picker
+    ?`<div class="turn" style="--c:${teamColor(st,d.picker)}"><div style="flex:1"><div class="muted small">Сонголт ${d.k+1} / ${d.total}</div><div class="who">${role===d.picker?'Таны ээлж: гишүүнээ сонгоно уу':esc(capName(st,d.picker))+' сонгож байна'}</div></div><span class="roundinfo">${d.r+1}-р тойрог ${d.dir>0?'1 → '+st.order.length:st.order.length+' → 1'}</span></div>`
+    :`<div class="turn"><div class="who">Драфт дууслаа</div></div>`;
+  const pool=d.pool.length?`<div class="card"><h2 style="margin-bottom:10px">Сонгогдоогүй оролцогчид</h2><div class="chips pool">${d.pool.map(p=>canPick?`<button class="chip pick" data-act="draftpick" data-name="${esc(p)}">${esc(p)}</button>`:`<span class="chip idle">${esc(p)}</span>`).join('')}</div>${role==='admin'&&canPick?`<p class="muted small" style="margin-top:10px">Админ дарвал ${esc(capName(st,d.picker))}-ийн өмнөөс сонгоно.</p>`:''}</div>`:'';
+  const teams=`<div class="teams">${st.order.map(id=>`<div class="team ${d.picker===id?'active':''}" style="--c:${teamColor(st,id)}"><h3><span class="dot" style="--c:${teamColor(st,id)}"></span>${esc(capName(st,id))}-ийн баг</h3><div class="cap">Ахлагч: ${esc(capName(st,id))}</div>${d.teams[id].length?`<ul>${d.teams[id].map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`:'<div class="muted small">Гишүүнгүй</div>'}</div>`).join('')}</div>`;
+  let admin='';
+  if(role==='admin')admin=`<div class="row">${!d.picker?`<button class="btn big" data-act="startplay">Тоглоом эхлүүлэх</button>`:''}${d.k?`<button class="btn ghost" data-act="undopick">Сүүлийн сонголтыг буцаах</button>`:''}</div>`;
+  return `<div class="stack">${head}${admin}${pool}${teams}</div>`;
+}
+
+function gradeControls(key,capId,points,isTb){
+  const g=(S.grade[key]||{})[capId];
+  if(isTb)return `<div class="grade"><button class="gbtn ok ${g===1?'on':''}" data-act="grade" data-key="${key}" data-cap="${capId}" data-v="1">Зөв</button><button class="gbtn no ${g===0?'on':''}" data-act="grade" data-key="${key}" data-cap="${capId}" data-v="0">Буруу</button></div>`;
+  const custom=g!=null&&g!==points&&g!==0;
+  return `<div class="grade"><button class="gbtn ok ${g===points?'on':''}" data-act="grade" data-key="${key}" data-cap="${capId}" data-v="${points}">Зөв +${points}</button><button class="gbtn no ${g===0?'on':''}" data-act="grade" data-key="${key}" data-cap="${capId}" data-v="0">Буруу 0</button><input type="number" id="pts-${key}-${capId}" data-grade-key="${key}" data-grade-cap="${capId}" placeholder="Өөр оноо" value="${custom?g:''}" aria-label="Өөр оноо"></div>`;
+}
+
+function renderQuestion(st,cur,role,isTb){
+  const elig=isTb?cur.group:eligible(st,cur.capId);
+  const done=cur.status==='done';
+  const meta=isTb
+    ?`<div class="qmeta"><span>Тэнцээ шийдвэрлэх асуулт</span>${cur.topicName?`<span>${esc(cur.topicName)}</span>`:''}</div>`
+    :`<div class="qmeta"><span class="pts">${cur.points}</span><span>${esc(topicName(st,cur.topic))}</span><span>Сонгосон: ${esc(capName(st,cur.capId))}</span></div>`;
+  let body='';
+  if(role==='admin'){
+    body+=`<div class="reveal"><div class="lbl">${done?'Зөв хариулт':'Зөв хариулт (зөвхөн админд харагдана)'}</div><div class="val">${esc(cur.answer)||'—'}</div></div>`;
+    body+=`<div class="alist">${elig.map(id=>{const a=ansOf(st,cur.key,id);const res=done&&cur.results?cur.results[id]:null;
+      return `<div class="arow" style="--c:${teamColor(st,id)}"><div class="t"><span class="dot" style="--c:${teamColor(st,id)}"></span>${esc(capName(st,id))}-ийн баг${done?`<span class="spacer"></span><span class="awarded">${isTb?(res?'Зөв':'Буруу'):(res>=0?'+':'')+(res||0)}</span>`:''}</div>
+      <div class="ans">${a!=null?esc(a):'<span class="muted">Хариулт ирээгүй</span>'}</div>${done?'':gradeControls(cur.key,id,cur.points,isTb)}</div>`}).join('')}</div>`;
+    if(!done){
+      const g=S.grade[cur.key]||{},ready=elig.every(id=>g[id]!=null);
+      body+=`<div class="row"><button class="btn" data-act="${isTb?'tbjudge':'award'}" ${ready?'':'disabled'}>${isTb?'Дүгнэх':'Оноо өгөх'}</button>${isTb?'':'<button class="btn sec" data-act="cancelq">Асуултыг буцаах</button>'}${ready?'':'<span class="muted small">Баг бүрийг тэмдэглэнэ үү</span>'}</div>`;
+    }else if(!isTb){
+      body+=`<div class="row"><button class="btn big" data-act="next">Дараагийн ээлж</button></div>`;
+    }
+  }else{
+    if(done){
+      body+=`<div class="reveal"><div class="lbl">Зөв хариулт</div><div class="val">${esc(cur.answer)||'—'}</div></div>`;
+      body+=`<div class="alist">${elig.map(id=>{const a=ansOf(st,cur.key,id);const res=cur.results?cur.results[id]:0;
+        return `<div class="arow" style="--c:${teamColor(st,id)}"><div class="t"><span class="dot" style="--c:${teamColor(st,id)}"></span>${esc(capName(st,id))}-ийн баг${id===role?' (та)':''}<span class="spacer"></span><span class="awarded">${isTb?(res?'Зөв':'Буруу'):(res>=0?'+':'')+(res||0)}</span></div><div class="ans">${a!=null?esc(a):'<span class="muted">Хариулаагүй</span>'}</div></div>`}).join('')}</div>`;
+    }else if(role&&elig.includes(role)){
+      const a=ansOf(st,cur.key,role),k='ans:'+cur.key+':'+role;
+      body+=`<label class="f"><span class="muted">Багийн хариулт</span><textarea id="ans-${cur.key}" data-bind="${k}" rows="2" placeholder="Хариултаа бичнэ үү">${fv(k,a||'')}</textarea></label>
+      <div class="row"><button class="btn" data-act="sendans" data-key="${cur.key}">${a!=null?'Хариултаа шинэчлэх':'Хариулт илгээх'}</button>${a!=null?`<span class="sent">Илгээсэн: ${esc(a)}</span>`:''}</div>`;
+    }else if(role&&st.captains[role]){
+      body+=`<p class="muted">Энэ асуултад ${elig.map(id=>esc(capName(st,id))).join(', ')}-ийн баг хариулна.</p>`;
+    }else{
+      body+=`<p class="muted">Багууд хариултаа бичиж байна…</p>`;
+    }
+  }
+  return `<div class="qcard">${meta}<div class="qbody">${esc(cur.text)}</div>${body}</div>`;
+}
+
+function renderPlay(st,role){
+  const p=st.play,picker=st.order[p.turn],cur=p.current;
+  const canPick=!cur&&(role==='admin'||role===picker);
+  let who;
+  if(cur)who=esc(capName(st,cur.capId))+'-ийн баг сонголоо';
+  else if(role===picker)who='Таны ээлж: сэдэв, асуултаа сонгоно уу';
+  else who=esc(capName(st,picker))+'-ийн баг сонгож байна';
+  const head=`<div class="turn" style="--c:${teamColor(st,picker)}"><div style="flex:1"><div class="who">${who}</div>${role==='admin'&&canPick?`<div class="muted small">Самбар дээр дарвал ${esc(capName(st,picker))}-ийн өмнөөс сонгоно.</div>`:''}</div><span class="roundinfo">${p.round}/${st.rounds} үе</span></div>`;
+  const left=`<div class="stack">${head}${cur?renderQuestion(st,cur,role,false):''}${renderBoard(st,{clickable:canPick})}${role==='admin'?`<div class="row"><button class="btn ghost" data-act="forceend">Тоглоомыг одоо дуусгах</button></div>`:''}</div>`;
+  return `<div class="play">${left}<div class="stack">${renderScoreboard(st)}</div></div>`;
+}
+
+function renderTiebreak(st,role){
+  const r=rankInfo(st),tb=st.tiebreak;
+  const groupsHtml=r.groups.length?r.groups.map(g=>`<div class="tbgroup">${g.map(id=>`<span class="dot" style="--c:${teamColor(st,id)}"></span>${esc(capName(st,id))}`).join(' <span class="muted">ба</span> ')}<span class="muted small">(${r.list.find(x=>x.id===g[0]).score} оноо)</span></div>`).join(''):'<p>Бүх байр тодорлоо.</p>';
+  let admin='';
+  if(role==='admin'&&(!tb||tb.status==='done')){
+    if(r.groups.length){
+      admin=remainingQ(st).length===0
+        ?`<div style="display:grid;gap:8px;margin-top:12px"><p class="muted small">Ашиглаагүй асуулт үлдээгүй. Шийдвэрлэх асуултаа бичнэ үү.</p><input type="text" id="f-tbq" data-bind="tbq" placeholder="Асуулт" value="${fv('tbq')}"><input type="text" id="f-tba" data-bind="tba" placeholder="Зөв хариулт" value="${fv('tba')}"><div><button class="btn" data-act="tbstart">Асуулт өгөх</button></div></div>`
+        :`<div class="row" style="margin-top:12px"><button class="btn" data-act="tbstart">Санамсаргүй асуулт сугалах</button></div>`;
+    }else admin=`<div class="row" style="margin-top:12px"><button class="btn big" data-act="tbfinish">Эцсийн дүн харах</button></div>`;
+  }
+  const card=`<div class="card"><h2>Тэнцсэн багууд</h2><p class="muted small" style="margin:4px 0 10px">Тэнцсэн багуудад санамсаргүй нэг асуулт өгч байрыг шийднэ.</p><div style="display:grid;gap:8px">${groupsHtml}</div>${admin}</div>`;
+  return `<div class="play"><div class="stack">${card}${tb?renderQuestion(st,tb,role,true):''}</div><div class="stack">${renderScoreboard(st)}</div></div>`;
+}
+
+function renderFinal(st,role){
+  const r=rankInfo(st),teams=draftInfo(st).teams;
+  const top=r.list.slice(0,3),rest=r.list.slice(3);
+  return `<div class="stack"><h1 style="font-size:26px">Эцсийн дүн</h1>
+  <div class="podium">${top.map(x=>`<div class="pod ${x.place===1?'first':''}" style="--c:${teamColor(st,x.id)}"><div class="pl">${x.place}</div><div class="nm">${esc(capName(st,x.id))}-ийн баг</div><div class="sc">${x.score} оноо</div><div class="members" style="margin-top:6px">${(teams[x.id]||[]).map(esc).join(', ')}</div></div>`).join('')}</div>
+  ${rest.length?renderScoreboard(st):''}
+  ${role==='admin'?`<div class="row"><button class="btn" data-act="newgame">Шинэ тоглоом</button><span class="muted small">Асуулт, оролцогчид хадгалагдсан хэвээр үлдэнэ.</span></div>`:''}</div>`;
+}
+
+/* ---------- role views ---------- */
+function renderAdmin(st){
+  let main='';
+  if(st.phase==='register'){
+    const all=st.captainIds.every(id=>st.captains[id].registered);
+    main=`<div class="stack"><div class="card"><h2>Ахлагч нарын бүртгэл</h2><p class="muted small" style="margin:4px 0 14px">Ахлагч бүрд кодыг нь өгнө. Тэд сайт руу орж кодоо оруулахад нэвтэрсэн гэж тэмдэглэгдэнэ. Төхөөрөмжгүй ахлагчийн өмнөөс дээд талын «Харагдац» цэснээс үйлдэл хийж болно.</p>${codeList(st)}
+    <div class="row" style="margin-top:16px"><button class="btn big" data-act="shuffleorder">Дараалал сугалах</button>${all?'':'<span class="muted small">Нэвтрээгүй ахлагч байна. Үргэлжлүүлж болно.</span>'}</div></div>${topicSummary(st)}</div>`;
+  }else if(st.phase==='order'){
+    const pool=draftInfo(st).pool.length;
+    main=`<div class="stack">${renderOrder(st)}<div class="row"><button class="btn big" data-act="startdraft">${pool?'Драфт эхлүүлэх':'Тоглоом эхлүүлэх'}</button><button class="btn ghost" data-act="shuffleorder">Дахин сугалах</button></div>${renderBoard(st,{note:'Сэдэв бүрийн асуултууд онооны дагуу.'})}${topicSummary(st)}</div>`;
+  }else if(st.phase==='draft')main=renderDraft(st,'admin');
+  else if(st.phase==='play')main=renderPlay(st,'admin');
+  else if(st.phase==='tiebreak')main=renderTiebreak(st,'admin');
+  else if(st.phase==='finished')main=renderFinal(st,'admin');
+  const codes=st.phase!=='register'&&st.phase!=='finished'?`<details style="width:100%"><summary>Ахлагч нарын кодууд</summary><div style="margin-top:10px">${codeList(st)}</div></details>`:'';
+  return main+`<div class="foot">${codes}${st.phase==='finished'?'':'<button class="btn ghost" data-act="newgame">Тоглоомыг цуцалж бэлтгэл рүү буцах</button>'}</div>`;
+}
+function phaseView(st,role){
+  if(st.phase==='register')return `<div class="card"><h2>Бүртгэл</h2><p class="muted small" style="margin:4px 0 12px">Бүх ахлагч нэвтэрсний дараа админ дарааллыг сугална.</p>${regStatus(st)}</div>`;
+  if(st.phase==='order')return `<div class="stack">${renderOrder(st)}${renderBoard(st)}${topicSummary(st)}</div>`;
+  if(st.phase==='draft')return renderDraft(st,role);
+  if(st.phase==='play')return renderPlay(st,role);
+  if(st.phase==='tiebreak')return renderTiebreak(st,role);
+  if(st.phase==='finished')return renderFinal(st,role);
+  return '';
+}
+function renderCaptain(st,id){
+  return `<div class="stack"><div class="row"><span class="dot" style="--c:${teamColor(st,id)}"></span><b>${esc(capName(st,id))}-ийн багийн ахлагч</b></div>${phaseView(st,id)}</div>`;
+}
+
+/* ---------- actions ---------- */
+const SAMPLE=[
+  ['Түүх',100,'Их Монгол Улс хэдэн онд байгуулагдсан бэ?','1206 он'],
+  ['Түүх',200,'Монгол Улс тусгаар тогтнолоо хэдэн онд тунхагласан бэ?','1911 он'],
+  ['Түүх',300,'Хубилай хааны байгуулсан гүрэн юу гэж нэрлэгддэг вэ?','Юань гүрэн'],
+  ['Газарзүй',100,'Монгол Улс хэдэн аймагтай вэ?','21'],
+  ['Газарзүй',200,'Монголын хамгийн өндөр оргил аль нь вэ?','Хүйтэн оргил'],
+  ['Газарзүй',300,'Талбайгаараа Монголын хамгийн том нуур аль нь вэ?','Увс нуур'],
+  ['Шинжлэх ухаан',100,'Усны химийн томьёо юу вэ?','H₂O'],
+  ['Шинжлэх ухаан',200,'Нарны аймгийн хамгийн том гариг аль нь вэ?','Бархасбадь'],
+  ['Шинжлэх ухаан',300,'Вакуум дахь гэрлийн хурд секундэд ойролцоогоор хэдэн км вэ?','300 000 км'],
+  ['Спорт',100,'Хөлбөмбөгийн нэг баг талбай дээр хэдэн тоглогчтой вэ?','11'],
+  ['Спорт',200,'Эрийн гурван наадам гэж юуг хэлдэг вэ?','Бөх, морь уралдаан, сур харваа'],
+  ['Спорт',300,'Монголын анхны олимпийн алтан медалийг хэн хүртсэн бэ?','Н. Түвшинбаяр (2008, жүдо)']
+];
+const asParam=()=>{const r=currentRole();return S.auth==='admin'&&r!=='admin'&&r!=='spectator'?{as:r}:{}};
+const actions={
+  login(){const c=(S.form.code||'').trim();if(!c)return toast('Кодоо оруулна уу.');auth(c,false)},
+  logout(){socket.emit('logout');S.auth=null;S.view=null;LS.del('tq-code');render()},
+  addq(){
+    const f=S.form,topic=(f.topic||'').trim(),points=parseInt(f.points||'100',10),q=(f.q||'').trim(),a=(f.a||'').trim();
+    if(!topic||!q||!a||!(points>0))return toast('Сэдэв, оноо, асуулт, хариултыг бүгдийг бөглөнө үү.');
+    S.setup.questions.push({id:uid(),topic,points,q,a});S.form.q='';S.form.a='';pushSetup();render();
+    const el=document.getElementById('f-q');if(el)el.focus();
+  },
+  bulk(){
+    const lines=(S.form.bulk||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);let n=0,bad=0;
+    lines.forEach(l=>{const p=(l.includes('|')?l.split('|'):l.split('\t')).map(x=>x.trim());const pts=parseInt(p[1],10);
+      if(p.length>=4&&p[0]&&pts>0&&p[2]&&p[3]){S.setup.questions.push({id:uid(),topic:p[0],points:pts,q:p[2],a:p.slice(3).join(' | ')});n++}else bad++});
+    S.form.bulk='';S.form.bulkOpen=false;pushSetup();render();toast(`${n} асуулт нэмэгдлээ${bad?`, ${bad} мөр алгассан`:''}.`);
+  },
+  exportq(){S.form.bulk=S.setup.questions.map(q=>[q.topic,q.points,q.q,q.a].join(' | ')).join('\n');S.form.bulkOpen=true;render();toast('Текстийг хуулж өөр газар хадгалаарай.')},
+  sample(){SAMPLE.forEach(s=>S.setup.questions.push({id:uid(),topic:s[0],points:s[1],q:s[2],a:s[3]}));pushSetup();render()},
+  delq(b){S.setup.questions=S.setup.questions.filter(q=>q.id!==b.dataset.id);pushSetup();render()},
+  clearq(){if(!confirm('Бүх асуултыг устгах уу?'))return;S.setup.questions=[];pushSetup();render()},
+  savepeople(){
+    const raw=S.form.people!=null?S.form.people:S.setup.participants.join('\n');
+    const seen=new Set(),list=[];raw.split(/\r?\n|,/).map(x=>x.trim()).filter(Boolean).forEach(n=>{if(!seen.has(n)){seen.add(n);list.push(n)}});
+    S.setup.participants=list;S.setup.captainNames=list.filter(n=>S.setup.captainNames.includes(n));S.form.people=list.join('\n');
+    pushSetup();render();toast(`${list.length} оролцогч хадгалагдлаа.`);
+  },
+  togglecap(b){const n=b.dataset.name,set=new Set(S.setup.captainNames);set.has(n)?set.delete(n):set.add(n);S.setup.captainNames=S.setup.participants.filter(p=>set.has(p));pushSetup();render()},
+  randcap(){const k=Math.max(2,Math.min(parseInt(S.form.capcount||'4',10)||2,S.setup.participants.length));const set=new Set(shuffle(S.setup.participants).slice(0,k));S.setup.captainNames=S.setup.participants.filter(p=>set.has(p));pushSetup();render()},
+  async startreg(){
+    clearTimeout(setupTimer);
+    if(!await send('setup.update',{setup:S.setup}))return;
+    S.setupPending=0;S.grade={};S.viewAs='admin';S.form={};
+    send('game.start');
+  },
+  newcode(b){if(confirm('Энэ ахлагчийн кодыг шинэчлэх үү? Хуучин код ажиллахаа болино.'))send('captain.newcode',{capId:b.dataset.cap})},
+  shuffleorder(){send('game.shuffle')},
+  startdraft(){send('game.startdraft')},
+  draftpick(b){send('draft.pick',Object.assign({name:b.dataset.name},asParam()))},
+  undopick(){send('game.undopick')},
+  startplay(){send('game.startplay')},
+  pickq(b){send('play.pick',Object.assign({qid:b.dataset.q},asParam()))},
+  grade(b){const k=b.dataset.key;S.grade[k]=S.grade[k]||{};S.grade[k][b.dataset.cap]=Number(b.dataset.v);render()},
+  award(){const cur=G().play.current;if(cur)send('play.award',{grades:S.grade[cur.key]||{}})},
+  cancelq(){send('play.cancel')},
+  next(){send('play.next')},
+  forceend(){if(confirm('Тоглоомыг одоо дуусгаж байрлалыг гаргах уу?'))send('game.end')},
+  async sendans(b){
+    const role=currentRole(),key=b.dataset.key,text=(S.form['ans:'+key+':'+role]||'').trim();
+    if(!text)return toast('Хариултаа бичнэ үү.');
+    if(await send('play.answer',Object.assign({key,text},asParam())))toast('Хариулт илгээгдлээ.');
+  },
+  tbstart(){send('tb.start',{q:S.form.tbq||'',a:S.form.tba||''}).then(ok=>{if(ok){S.form.tbq='';S.form.tba=''}})},
+  tbjudge(){const tb=G().tiebreak;if(tb)send('tb.judge',{grades:S.grade[tb.key]||{}})},
+  tbfinish(){send('tb.finish')},
+  newgame(){if(confirm('Одоогийн тоглолтыг дуусгаж бэлтгэл рүү буцах уу? Асуулт, оролцогчид хадгалагдана. Ахлагч нарын код хүчингүй болно.')){S.grade={};S.viewAs='admin';send('game.reset')}}
+};
+function syncAwardBtn(){
+  const st=G();if(!st)return;const cur=st.phase==='play'?st.play.current:st.tiebreak;if(!cur)return;
+  const elig=st.phase==='play'?eligible(st,cur.capId):cur.group,g=S.grade[cur.key]||{};
+  const b=document.querySelector('[data-act="award"],[data-act="tbjudge"]');if(b)b.disabled=!elig.every(id=>g[id]!=null);
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+  const fn=actions[b.dataset.act];if(fn){e.preventDefault();fn(b,e)}
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.bind)S.form[t.dataset.bind]=t.value;
+  if(t.dataset&&t.dataset.gradeKey){const k=t.dataset.gradeKey;S.grade[k]=S.grade[k]||{};if(t.value==='')delete S.grade[k][t.dataset.gradeCap];else S.grade[k][t.dataset.gradeCap]=Number(t.value);syncAwardBtn()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='role-sel'){S.viewAs=t.value;render();return}
+  if(t.id==='f-rounds'){S.setup.rounds=Math.max(1,parseInt(t.value,10)||1);pushSetup();render();return}
+  if(t.name==='amode'){S.setup.answerMode=t.value;pushSetup();render();return}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;const t=e.target;
+  if(t.id==='f-code'){e.preventDefault();actions.login()}
+  else if(t.id&&t.id.startsWith('ans-')&&!e.shiftKey){e.preventDefault();const b=document.querySelector(`[data-act="sendans"][data-key="${t.id.slice(4)}"]`);if(b)actions.sendans(b)}
+});
+render();
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: team-quiz
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: ADMIN_CODE
+        sync: false
